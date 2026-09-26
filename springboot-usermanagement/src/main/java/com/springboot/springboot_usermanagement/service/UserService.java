@@ -1,5 +1,6 @@
 package com.springboot.springboot_usermanagement.service;
 
+import com.springboot.springboot_usermanagement.dto.LoginDto;
 import com.springboot.springboot_usermanagement.dto.UserDto;
 
 import java.util.List;
@@ -16,5 +17,11 @@ public interface UserService {
 
     void deleteUser(Long id);
 
+   UserDto login(LoginDto loginDto) ;
 
+    void forgotPassword(String email);
+
+    boolean verifyOtp(String otp);
+
+    void resetPassword(String otp, String newPassword);
 }

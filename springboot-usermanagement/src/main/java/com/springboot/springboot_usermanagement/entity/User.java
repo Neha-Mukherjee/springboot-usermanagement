@@ -1,5 +1,6 @@
 package com.springboot.springboot_usermanagement.entity;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 
 @Entity
@@ -14,17 +15,21 @@ public class User {
     private String lastName;
     @Column(unique = true)
     private String email;
+    @Column(nullable = false)
+    private String password;
 
     //default constructor
     public User(){
 
     }
     //getter setter
-    public User(Long id , String email, String lastName, String firstName) {
+    public User(Long id , String lastName, String firstName, String email,String password) {
         this.id = id;
-        this.email = email;
+
         this.lastName = lastName;
         this.firstName = firstName;
+        this.email = email;
+        this.password=password;
 
     }
 
@@ -59,4 +64,8 @@ public class User {
     public void setId(long Id) {
         this.id = id;
     }
+
+    public String getPassword(){return password;}
+
+    public void  setPassword(String password){this.password=password;}
 }
