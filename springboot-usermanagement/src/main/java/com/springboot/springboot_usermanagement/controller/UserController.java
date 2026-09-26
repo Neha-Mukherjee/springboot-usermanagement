@@ -1,5 +1,7 @@
 package com.springboot.springboot_usermanagement.controller;
 
+import com.springboot.springboot_usermanagement.dto.ForgotPasswordRequest;
+import com.springboot.springboot_usermanagement.dto.LoginDto;
 import com.springboot.springboot_usermanagement.dto.UserDto;
 import com.springboot.springboot_usermanagement.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -51,4 +53,37 @@ public class UserController {
         userService.deleteUser(id);
         return ResponseEntity.ok("user deleted successfully");
     }
+
+    //build login request restapi
+     @PostMapping("/login")
+    public ResponseEntity<UserDto>login(@RequestBody LoginDto loginDto){
+        return ResponseEntity.ok(userService.login(loginDto));
+    }
+
+    //build password reset restapi
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequest request){
+        userService.forgotPassword(request.email());
+        return ResponseEntity.ok("Otp sent to email");
+    }
+
+    //build otp verify rest api
+    @PostMapping("/verify-otp")
+    public ResponseEntity<String> verifyOtp(@RequestParam String otp) {
+        boolean valid = userService.verifyOtp(otp);
+        if (valid) {
+            return ResponseEntity.ok("OTP verified");
+        }
+        return ResponseEntity.badRequest().body("Invalid or expired OTP");
+    }
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(
+            @RequestParam String otp,
+            @RequestParam String newPassword) {
+
+        userService.resetPassword(otp, newPassword);
+
+        return ResponseEntity.ok("Password reset successfully");
+    }
+
 }
