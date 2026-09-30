@@ -2,7 +2,11 @@ package com.springboot.springboot_usermanagement.entity;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 @Entity
 @Table(name="users")
 public class User {
@@ -68,4 +72,6 @@ public class User {
     public String getPassword(){return password;}
 
     public void  setPassword(String password){this.password=password;}
+
+
 }

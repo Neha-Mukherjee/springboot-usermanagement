@@ -17,11 +17,17 @@ public interface UserService {
 
     void deleteUser(Long id);
 
-   UserDto login(LoginDto loginDto) ;
+   String login(LoginDto loginDto) ;
 
     void forgotPassword(String email);
 
     boolean verifyOtp(String otp);
 
     void resetPassword(String otp, String newPassword);
+
+    void updatePassword(String oldPassword, String newPassword);
+
+    void forgotPasswordByLink(String email);
+
+    void resetPasswordByLink(String token, String newPassword);
 }

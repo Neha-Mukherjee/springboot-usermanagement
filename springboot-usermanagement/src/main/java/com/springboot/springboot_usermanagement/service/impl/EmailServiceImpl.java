@@ -26,4 +26,20 @@ public class EmailServiceImpl implements EmailService {
 
         mailSender.send(message);
     }
+    @Override
+    public void sendResetLink(String email, String token) {
+
+        String resetLink = "http://localhost:8080/api/users/reset-password-link?token=\" + token;" + token;
+        SimpleMailMessage message = new SimpleMailMessage();
+
+        message.setTo(email);
+        message.setSubject("Password Reset Link");
+
+        message.setText("Click the link below to reset your password:\n\n"
+                        + resetLink
+                        + "\n\nThis link expires in 5 minutes."
+        );
+
+        mailSender.send(message);
+    }
 }
