@@ -3,18 +3,25 @@ package com.springboot.springboot_usermanagement.service.impl;
 import com.springboot.springboot_usermanagement.dto.LoginDto;
 import com.springboot.springboot_usermanagement.dto.UserDto;
 import com.springboot.springboot_usermanagement.entity.PasswordReset;
+import com.springboot.springboot_usermanagement.entity.PasswordResetLink;
 import com.springboot.springboot_usermanagement.entity.User;
 import com.springboot.springboot_usermanagement.exception.ResourceNotFoundException;
 import com.springboot.springboot_usermanagement.mapper.UserMapper;
+import com.springboot.springboot_usermanagement.repository.PasswordResetLinkRepo;
 import com.springboot.springboot_usermanagement.repository.PasswordResetRepository;
 import com.springboot.springboot_usermanagement.repository.UserRepository;
 import com.springboot.springboot_usermanagement.service.EmailService;
+import com.springboot.springboot_usermanagement.service.JwtService;
 import com.springboot.springboot_usermanagement.service.UserService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 
 @Service
@@ -26,13 +33,17 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetRepository passwordResetRepository;
     private final EmailService emailService;
+    private final JwtService jwtService;
+    private final PasswordResetLinkRepo passwordResetLinkRepo;
 
-    public UserServiceImpl(UserRepository userRepository, UserMapper userMapper, PasswordEncoder passwordEncoder, PasswordResetRepository passwordResetRepository, EmailService emailService) {
+    public UserServiceImpl(UserRepository userRepository, UserMapper userMapper, PasswordEncoder passwordEncoder, PasswordResetRepository passwordResetRepository, EmailService emailService, JwtService jwtService, PasswordResetLinkRepo passwordResetLinkRepo) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetRepository = passwordResetRepository;
         this.emailService = emailService;
+        this.jwtService = jwtService;
+        this.passwordResetLinkRepo = passwordResetLinkRepo;
     }
 
 
@@ -87,13 +98,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDto login(LoginDto loginDto) {
+    public String login(LoginDto loginDto) {
         User user = userRepository.findByEmail(loginDto.email()).orElseThrow(() -> new ResourceNotFoundException("User not found with email" ));
-        if (passwordEncoder.matches(loginDto.password(), user.getPassword())) {
+        if (!passwordEncoder.matches(loginDto.password(), user.getPassword())) {
             throw new RuntimeException("Incorrect Password");
 
         }
-        return userMapper.toDto(user);
+        return jwtService.generateToken(user.getEmail());
     }
 
     @Override
@@ -124,7 +135,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean verifyOtp(String otp) {
-        return false;
+        PasswordReset reset = passwordResetRepository.findByOtp(otp)
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid OTP"));
+
+        if (reset.getExpiryDate().isBefore(LocalDateTime.now())) {
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -145,7 +162,75 @@ public class UserServiceImpl implements UserService {
 
             passwordResetRepository.delete(reset);
         }
+
+
+    @Override
+    public void updatePassword(String oldPassword, String newPassword) {
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found with email " + email));
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new RuntimeException("Incorrect Old Password");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+
+        userRepository.save(user);
     }
+
+    @Override
+    public void forgotPasswordByLink(String email) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found with email " + email));
+
+        String token = UUID.randomUUID().toString();
+
+        PasswordResetLink resetLink = passwordResetLinkRepo
+                .findByUser(user)
+                .orElse(new PasswordResetLink());
+
+        resetLink.setToken(token);
+        resetLink.setExpiryDate(LocalDateTime.now().plusMinutes(5));
+        resetLink.setUser(user);
+
+        passwordResetLinkRepo.save(resetLink);
+
+        emailService.sendResetLink(email, token);
+    }
+
+    @Override
+    public void resetPasswordByLink(String token, String newPassword) {
+
+        PasswordResetLink resetLink = passwordResetLinkRepo
+                .findByToken(token)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Invalid reset link"));
+
+        if (resetLink.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Reset link expired");
+        }
+
+        User user = resetLink.getUser();
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Make the reset link unusable after one successful reset
+        passwordResetLinkRepo.delete(resetLink);
+    }
+
+
+}
+
 
 
 
